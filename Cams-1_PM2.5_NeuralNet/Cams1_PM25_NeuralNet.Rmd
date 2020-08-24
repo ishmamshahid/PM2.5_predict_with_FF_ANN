@@ -1,0 +1,301 @@
+---
+title: "Cams1_PM2.5_NeuralNet"
+author: "ishmam shahid"
+date: "8/22/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Loading all the required Libraries
+```{r, message=FALSE, warning=FALSE}
+library(neuralnet)
+library(caret)
+library(ggplot2)
+library(imager)
+library(gridExtra)
+```
+
+Load data, subset from 2014-2018, derive the proper sequence of dates
+
+```{r}
+data <- read.csv("CAMS1-SANGSAD all date.csv")
+data<-data[366:2191,]
+data<-data[-c(1,9)]
+date<- seq(as.Date('2014-01-01'),as.Date('2018-12-31'),by = 1)
+date<-as.POSIXct(strptime(date, format ="%Y-%m-%d" ))
+data<-cbind(date,data)
+summary(data)
+```
+
+Aggregate weekly data from daily averaged data
+```{r,warning=FALSE}
+# calculate weekly means
+Weekly_Means <- aggregate(data, format(data["date"],"%Y-%W"), mean, na.rm = TRUE)
+# derive the proper sequence of dates
+Weekly_Means$date <- seq(min(data$date), max(data$date), length = nrow(Weekly_Means))
+Weekly_Means<-Weekly_Means[-1]
+plot(Weekly_Means$date, Weekly_Means[, "PM2.5"],
+     type = "l",
+     lwd = 1.5,
+     pch = 16,
+     col = "darkorange2",
+     xlab = "year",
+     ylab = "PM2.5",
+     ylim = c(0, 400),
+     main = "Weekly mean PM2.5 at CAMS-1.")
+```
+
+
+
+Normalize data, extract PM2.5 data, train and test split
+```{r}
+data<-data[-1]
+dataPM2.5<- data[-6]
+normalize <- function(x) {
+  return((x - min(x)) / (max(x) - min(x)))
+}
+
+dataPM2.5_norm <- as.data.frame(lapply(dataPM2.5, normalize))
+summary(dataPM2.5_norm$PM2.5)
+summary(dataPM2.5$PM2.5)
+
+dataPM2.5_train <- dataPM2.5_norm[1:1461, ]
+dataPM2.5_test <- dataPM2.5_norm[1462:1826, ]
+```
+Building neural network models of varying number of neurons
+
+Since these computations take longer time on computers to run, we will load the previously produced models on the workspace. The codes for creating the neural network models are given in the RMarkdown file for reference.
+```{r,warning=FALSE,echo=FALSE}
+#3
+#model_3 <- neuralnet(PM2.5 ~ Temp + ws +
+                           #Solar.Rad+ Rainfall+ Humidity ,
+                         #data = dataPM2.5_train,hidden = 3)
+
+#5
+#model_5 <- neuralnet(PM2.5 ~ Temp + ws +
+                       #Solar.Rad+ Rainfall+ Humidity ,
+                     #data = dataPM2.5_train,hidden = 5)
+
+#7
+#model_7 <- neuralnet(PM2.5 ~ Temp + ws +
+                       #Solar.Rad+ Rainfall+ Humidity ,
+                     #data = dataPM2.5_train,hidden = 7)
+
+#9
+#model_9 <- neuralnet(PM2.5 ~ Temp + ws +
+                       #Solar.Rad+ Rainfall+ Humidity ,
+                     #data = dataPM2.5_train,hidden = 9)
+
+#12
+#model_12 <- neuralnet(PM2.5 ~ Temp + ws +
+                       #Solar.Rad+ Rainfall+ Humidity ,
+                     #data = dataPM2.5_train,hidden = 12)
+
+#model_15 <- neuralnet(PM2.5 ~ Temp + ws +
+                       #Solar.Rad+ Rainfall+ Humidity ,
+                     #data = dataPM2.5_train,hidden = 15)
+
+#20
+#model_20 <- neuralnet(PM2.5 ~ Temp + ws +
+                       #Solar.Rad+ Rainfall+ Humidity ,
+                     #data = dataPM2.5_train,hidden = 20)
+```
+
+```{r,warning=FALSE}
+load("NeuralNet_models.RData")
+```
+
+
+Computing the predicted values using unseen test data on the trained models
+```{r,warning=FALSE}
+model_results_3 <- compute(model_3, dataPM2.5_test[1:5])
+model_results_5 <- compute(model_5, dataPM2.5_test[1:5])
+model_results_7 <- compute(model_7, dataPM2.5_test[1:5])
+model_results_9 <- compute(model_9, dataPM2.5_test[1:5])
+model_results_12 <- compute(model_12, dataPM2.5_test[1:5])
+model_results_15 <- compute(model_15, dataPM2.5_test[1:5])
+model_results_20 <- compute(model_20, dataPM2.5_test[1:5])
+
+predicted3 <- model_results_3$net.result
+predicted5 <- model_results_5$net.result
+predicted7 <- model_results_7$net.result
+predicted9 <- model_results_9$net.result
+predicted12 <- model_results_12$net.result
+predicted15 <- model_results_15$net.result
+predicted20 <- model_results_20$net.result
+```
+
+Converting all values to their original scale
+```{r,warning=FALSE}
+predicted3 <- model_results_3$net.result*(max(dataPM2.5$PM2.5)-min(dataPM2.5$PM2.5))+min(dataPM2.5$PM2.5)
+predicted5 <- model_results_5$net.result*(max(dataPM2.5$PM2.5)-min(dataPM2.5$PM2.5))+min(dataPM2.5$PM2.5)
+predicted7 <- model_results_7$net.result*(max(dataPM2.5$PM2.5)-min(dataPM2.5$PM2.5))+min(dataPM2.5$PM2.5)
+predicted9 <- model_results_9$net.result*(max(dataPM2.5$PM2.5)-min(dataPM2.5$PM2.5))+min(dataPM2.5$PM2.5)
+predicted12 <- model_results_12$net.result*(max(dataPM2.5$PM2.5)-min(dataPM2.5$PM2.5))+min(dataPM2.5$PM2.5)
+predicted15 <- model_results_15$net.result*(max(dataPM2.5$PM2.5)-min(dataPM2.5$PM2.5))+min(dataPM2.5$PM2.5)
+predicted20 <- model_results_20$net.result*(max(dataPM2.5$PM2.5)-min(dataPM2.5$PM2.5))+min(dataPM2.5$PM2.5)
+
+actual_test <- (dataPM2.5_test$PM2.5)*(max(dataPM2.5$PM2.5)-min(dataPM2.5$PM2.5))+min(dataPM2.5$PM2.5)
+
+```
+
+Incase negative values predicted, these are converted to zero instead
+```{r,warning=FALSE}
+predicted3<-  ifelse(predicted3 < 0, 0, predicted3)
+predicted5<-  ifelse(predicted5 < 0, 0, predicted5)
+predicted7<-  ifelse(predicted7 < 0, 0, predicted7)
+predicted9<-  ifelse(predicted9 < 0, 0, predicted9)
+predicted12<-  ifelse(predicted12 < 0, 0, predicted12)
+predicted15<-  ifelse(predicted15 < 0, 0, predicted15)
+predicted20<-  ifelse(predicted20 < 0, 0, predicted20)
+```
+
+A data frame is constructed to properly visualize the performance metrics of the models
+```{r,warning=FALSE}
+metrics_df<-rbind(cbind(Cor.Coeff=cor(predicted3,actual_test),
+                        data.frame(as.list(postResample(predicted3,actual_test)))),
+                  cbind(Cor.Coeff=cor(predicted5,actual_test),
+                        data.frame(as.list(postResample(predicted5,actual_test)))),
+                  cbind(Cor.Coeff=cor(predicted7,actual_test),
+                        data.frame(as.list(postResample(predicted7,actual_test)))),
+                  cbind(Cor.Coeff=cor(predicted9,actual_test),
+                        data.frame(as.list(postResample(predicted9,actual_test)))),
+                  cbind(Cor.Coeff=cor(predicted12,actual_test),
+                        data.frame(as.list(postResample(predicted12,actual_test)))),
+                  cbind(Cor.Coeff=cor(predicted15,actual_test),
+                        data.frame(as.list(postResample(predicted15,actual_test)))),
+                  cbind(Cor.Coeff=cor(predicted20,actual_test),
+                        data.frame(as.list(postResample(predicted20,actual_test)))))
+
+
+
+row.names(metrics_df)<-c("3 Neurons","5 Neurons","7 Neurons","9 Neurons","12 Neurons",
+                         "15 Neurons","20 Neurons")
+
+
+
+metrics_df
+```
+
+Based on the error metrics the model with 7 neurons performs best. The model architecture is shown
+```{r,warning=FALSE}
+#plot(model_7,show.weights = F,col.hidden = 'darkgreen',intercept = F,
+     #col.hidden.synapse = 'red', fill="lightblue")
+
+
+im <- load.image('network.jpeg')
+plot(im,axes = F)
+```
+
+
+
+#Plot actual and predicted values vs the testing period
+```{r,warning=FALSE}
+test_date<- seq(as.Date('2018-01-01'),as.Date('2018-12-31'),by = 1)
+test_date<-as.POSIXct(strptime(test_date, format ="%Y-%m-%d" ))
+
+predicted7<-as.numeric(predicted7)
+plot_df<-data.frame(test_date,actual_test,predicted7)
+colnames(plot_df)<-c("date","actual","predicted")
+
+
+p_2.5_1<- ggplot(data = plot_df, aes(x = date)) +
+  geom_line(aes(y = actual, colour = "Actual")) +
+  geom_line(aes(y = predicted, colour = "Predicted"),lwd=1) +
+  
+  scale_colour_manual("", 
+                      breaks = c("Actual", "Predicted"),
+                      values = c("darkblue", "red")) +
+  labs( y = "PM 2.5", title = "Predicted vs Observed values of PM 2.5 during 2018 in CAMS-1")
+
+p_2.5_1
+```
+
+
+Correlation Plot
+```{r,warning=FALSE}
+R2 <- caret::postResample(pred = predicted7, obs = actual_test)
+r2 <- ggplot(plot_df, aes(actual, predicted))
+r2 <- r2 + geom_point(alpha = .5)
+r2 <- r2 + annotate(geom = "text", x=260,y=100,  label = paste("R**2 = ", round(R2[2], 3)))
+r2 <- r2 + labs(x = "Actual", y = "Predicted", title = "Correlation Plot")
+r2 <- r2 + geom_smooth(se=F, method = "lm")
+r2
+```
+
+
+
+Calculation for weekly averaged data using the developed models involve the same process. The error indices were found to be as follows. 
+```{r,warning=FALSE}
+wk_metrics<-readRDS(file = "wk_metrics_df.rds")
+wk_metrics
+```
+
+
+For predicting weekly averaged values, based on the minimum RMSE, the model with 5 neurons performs best. The architecture is shown:
+```{r}
+wk_im <- load.image('wk_network.jpeg')
+plot(wk_im,axes = F)
+```
+
+
+Plot actual vs predicted weekly averaged values
+```{r}
+w_2.5_1<-readRDS(file = "w_2.5_1.rds")
+w_2.5_1
+```
+
+
+
+Visual comparison between daily actual vs predicted plots from all stations
+```{r}
+p_2.5_1<-readRDS(file = "p_2.5_1.rds")
+p_2.5_2<-readRDS(file = "p_2.5_2.rds")
+p_2.5_3<-readRDS(file = "p_2.5_3.rds")
+
+grid.arrange(p_2.5_1,p_2.5_2,p_2.5_3, nrow=3)
+
+```
+
+
+
+Visual comparison between correlation plots from all stations
+```{r}
+w_2.5_1<-readRDS(file = "w_2.5_1.rds")
+w_2.5_2<-readRDS(file = "w_2.5_2.rds")
+w_2.5_3<-readRDS(file = "w_2.5_3.rds")
+
+grid.arrange(w_2.5_1,w_2.5_2,w_2.5_3, nrow=3)
+
+```
+
+
+
+Visual comparison between weekly averaged actual vs predicted plots from all stations
+```{r,message=F}
+r2_1<-readRDS(file = "r2_1.rds")
+r2_2<-readRDS(file = "r2_2.rds")
+r2_3<-readRDS(file = "r2_3.rds")
+
+grid.arrange(r2_1,r2_2,r2_3, nrow=3)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
